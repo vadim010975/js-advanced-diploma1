@@ -8,6 +8,7 @@ import Vampire from './characters/Vampire.js';
 import GamePlay from './GamePlay.js';
 import { generateTeam, playersInit } from './generators.js';
 import cursors from './cursors.js';
+import Cell from './Cell.js'
 
 export default class GameController {
   constructor(gamePlay, stateService) {
@@ -20,7 +21,8 @@ export default class GameController {
     this.gamePlay.redrawPositions(playersInit([
       {
         team: generateTeam([Bowman, Swordsman, Magician], 2, 4),
-        cellsArray: [0, 1, 8, 9, 16, 17, 24, 25, 32, 33, 40, 41, 48, 49, 56, 57],
+        cellsArray: [4, 5, 12, 13, 20, 21, 28, 29, 36, 37, 44, 45, 52, 53, 60, 61],
+        //cellsArray: [0, 1, 8, 9, 16, 17, 24, 25, 32, 33, 40, 41, 48, 49, 56, 57],
       },
       {
         team: generateTeam([Daemon, Undead, Vampire], 2, 4),
@@ -48,32 +50,54 @@ export default class GameController {
   }
 
   onCellEnter(index) {
-    const cellInfo = this.getCellInfo(index);
-    console.log(cellInfo);
-    if (!cellInfo.isEmpty) {
+    const cell = new Cell(index);
+    console.log(cell);
+    // если клетка не пустая
+    if (!cell.isEmpty) {
       // вывод информации title
-      const message = this.showInformation(cellInfo.charEl);
+      const message = this.showInformation(cell.charEl);
       this.gamePlay.showCellTooltip(message, index);
-      // если свой и не выбран
-      if (cellInfo.role === 'ally' && !cellInfo.isSelected) {
+      // если свой и не selected
+      if (cell.role === 'ally' && !cell.isSelected) {
         this.gamePlay.setCursor(cursors.pointer);
+        // если чужой и персонаж выбран
+      } else if (this.gamePlay.selectedCellIdx !== null && cell.role === 'enemy') { 
+        // если в зоне атаки выбранного персонажа
+        if (this.getIndexesMoveAndAttack().arrayAttackIndexes.includes(index)) {
+          this.gamePlay.setCursor(cursors.crosshair);
+          this.gamePlay.selectCell(index, 'red');
+        } else {
+          this.gamePlay.setCursor(cursors.notallowed);
+        }
+      } else {
+        this.gamePlay.setCursor(cursors.auto);
       }
     } else {
-      if (this.gamePlay.selectedCellIdx !== null && this.getIndexesMoves().includes(index)) {
-        this.gamePlay.setCursor(cursors.pointer);
-        this.gamePlay.selectCell(index, 'green');
+      // если клетка пустая
+      // если персонаж selected
+      if (this.gamePlay.selectedCellIdx !== null) {
+        // если в зоне похода выбранного персонажа
+        if (this.getIndexesMoveAndAttack().arrayMoveIndexes.includes(index)) {
+          this.gamePlay.setCursor(cursors.pointer);
+          this.gamePlay.selectCell(index, 'green');
+        } else {
+          this.gamePlay.setCursor(cursors.notallowed);
+        }
+      } else {
+        this.gamePlay.setCursor(cursors.auto);
       }
     }
-
-
   }
 
   onCellLeave(index) {
     if (this.gamePlay.cells[index].querySelector('.character')) {
       this.gamePlay.hideCellTooltip(index);
     };
-    this.gamePlay.deselectCell(index);
+
     this.gamePlay.setCursor(cursors.auto);
+    if (index !== this.gamePlay.selectedCellIdx) {
+      this.gamePlay.deselectCell(index);
+    }
   }
 
   showInformation(charEl) {
@@ -82,39 +106,39 @@ export default class GameController {
 
 
 
-  getCellInfo(index) {
-    const cellInfo = {
-      isEmpty: true,
-      character: null,
-      charEl: null,
-      role: null,
-      isSelected: false,
-    };
-    const cellEl = this.gamePlay.cells[index];
-    const charEl = cellEl.querySelector('.character');
-    if (charEl) {
-      cellInfo.isEmpty = false;
-      cellInfo.charEl = charEl;
-      if (charEl.classList.contains('swordsman')) {
-        cellInfo.character = 'swordsman';
-      } else if (charEl.classList.contains('bowman')) {
-        cellInfo.character = 'bowman';
-      } else if (charEl.classList.contains('magician')) {
-        cellInfo.character = 'magician';
-      } else if (charEl.classList.contains('vampire')) {
-        cellInfo.character = 'vampire';
-      } else if (charEl.classList.contains('undead')) {
-        cellInfo.character = 'undead';
-      } else if (charEl.classList.contains('daemon')) {
-        cellInfo.character = 'daemon';
-      }
-      cellInfo.role = cellInfo.character === 'swordsman' || cellInfo.character === 'bowman' || cellInfo.character === 'magician' ? 'ally' : 'enemy';
-      if (cellEl.classList.contains('selected')) {
-        cellInfo.isSelected = true;
-      }
-    }
-    return cellInfo;
-  }
+  // getCellInfo(index) {
+  //   const cellInfo = {
+  //     isEmpty: true,
+  //     character: null,
+  //     charEl: null,
+  //     role: null,
+  //     isSelected: false,
+  //   };
+  //   const cellEl = this.gamePlay.cells[index];
+  //   const charEl = cellEl.querySelector('.character');
+  //   if (charEl) {
+  //     cellInfo.isEmpty = false;
+  //     cellInfo.charEl = charEl;
+  //     if (charEl.classList.contains('swordsman')) {
+  //       cellInfo.character = 'swordsman';
+  //     } else if (charEl.classList.contains('bowman')) {
+  //       cellInfo.character = 'bowman';
+  //     } else if (charEl.classList.contains('magician')) {
+  //       cellInfo.character = 'magician';
+  //     } else if (charEl.classList.contains('vampire')) {
+  //       cellInfo.character = 'vampire';
+  //     } else if (charEl.classList.contains('undead')) {
+  //       cellInfo.character = 'undead';
+  //     } else if (charEl.classList.contains('daemon')) {
+  //       cellInfo.character = 'daemon';
+  //     }
+  //     cellInfo.role = cellInfo.character === 'swordsman' || cellInfo.character === 'bowman' || cellInfo.character === 'magician' ? 'ally' : 'enemy';
+  //     if (cellEl.classList.contains('selected')) {
+  //       cellInfo.isSelected = true;
+  //     }
+  //   }
+  //   return cellInfo;
+  // }
 
 
 
@@ -123,7 +147,7 @@ export default class GameController {
 
 
 
-  getIndexesMoves() {
+  getIndexesMoveAndAttack() {
     if (this.gamePlay.selectedCellIdx === null) {
       return;
     }
@@ -139,33 +163,34 @@ export default class GameController {
         }
       }
     }
-    const char = this.getCellInfo(this.gamePlay.selectedCellIdx).character;
-    let countStep;
-    switch (char) {
-      case 'swordsman':
-        countStep = 4;
-        break;
-      case 'bowman':
-        countStep = 2;
-        break;
-      case 'magician':
-        countStep = 1;
-    }
-    const arrayIndexesMoves = [];
-    for (let step = 1; step <= countStep; step += 1) {
-      arrayIndexesMoves.push(arrayIndexes[indexI][indexJ - step]);
-      arrayIndexesMoves.push(arrayIndexes[indexI][indexJ + step]);
-      if (indexI - step >= 0) {
-        arrayIndexesMoves.push(arrayIndexes[indexI - step][indexJ]);
-        arrayIndexesMoves.push(arrayIndexes[indexI - step][indexJ - step]);
-        arrayIndexesMoves.push(arrayIndexes[indexI - step][indexJ + step]);
+    const cell = new Cell(this.gamePlay.selectedCellIdx)
+    const countStep = cell.charHikeRange;
+    const arrayMoveIndexes = [];
+    for (let i = 1; i <= countStep; i += 1) {
+      arrayMoveIndexes.push(arrayIndexes[indexI][indexJ - i]);
+      arrayMoveIndexes.push(arrayIndexes[indexI][indexJ + i]);
+      if (indexI - i >= 0) {
+        arrayMoveIndexes.push(arrayIndexes[indexI - i][indexJ]);
+        arrayMoveIndexes.push(arrayIndexes[indexI - i][indexJ - i]);
+        arrayMoveIndexes.push(arrayIndexes[indexI - i][indexJ + i]);
       }
-      if (indexI + step < arrayIndexes.length) {
-        arrayIndexesMoves.push(arrayIndexes[indexI + step][indexJ]);
-        arrayIndexesMoves.push(arrayIndexes[indexI + step][indexJ + step]);
-        arrayIndexesMoves.push(arrayIndexes[indexI + step][indexJ - step]);
+      if (indexI + i < arrayIndexes.length) {
+        arrayMoveIndexes.push(arrayIndexes[indexI + i][indexJ]);
+        arrayMoveIndexes.push(arrayIndexes[indexI + i][indexJ + i]);
+        arrayMoveIndexes.push(arrayIndexes[indexI + i][indexJ - i]);
       }
     }
-    return arrayIndexesMoves.filter(el => el !== undefined);
+    const attackRange = cell.charAttackRange;
+    const arrayAttackIndexes = [];
+    const startI = indexI - attackRange < 0 ? 0 : indexI - attackRange;
+    const startJ = indexJ - attackRange < 0 ? 0 : indexJ - attackRange;
+    const endI = indexI + attackRange >= arrayIndexes.length ? arrayIndexes.length - 1 : indexI + attackRange;
+    const endJ = indexJ + attackRange >= arrayIndexes.length ? arrayIndexes.length - 1 : indexJ + attackRange;
+    for (let i = startI; i <= endI; i += 1) {
+      for (let j = startJ; j <= endJ; j += 1) {
+        arrayAttackIndexes.push(arrayIndexes[i][j]);
+      }
+    }
+    return { arrayMoveIndexes: arrayMoveIndexes.filter(el => el !== undefined), arrayAttackIndexes: arrayAttackIndexes };
   }
 }
