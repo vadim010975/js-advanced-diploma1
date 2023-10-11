@@ -9,6 +9,7 @@ import GamePlay from './GamePlay.js';
 import { generateTeam, playersInit } from './generators.js';
 import cursors from './cursors.js';
 import Cell from './Cell.js'
+import MyTeam from './MyTeam.js';
 
 export default class GameController {
   constructor(gamePlay, stateService) {
@@ -18,11 +19,18 @@ export default class GameController {
 
   init() {
     this.gamePlay.drawUi('prairie');
+    const myTeam = new MyTeam(playersInit([
+      {
+        team: generateTeam([Bowman, Swordsman, Magician], 2, 4),
+        cellsArray: [0, 1, 8, 9, 16, 17, 24, 25, 32, 33, 40, 41, 48, 49, 56, 57],
+      }
+    ]));
+    console.log(myTeam.getPositionedCharacters());
     this.gamePlay.redrawPositions(playersInit([
       {
         team: generateTeam([Bowman, Swordsman, Magician], 2, 4),
-        cellsArray: [4, 5, 12, 13, 20, 21, 28, 29, 36, 37, 44, 45, 52, 53, 60, 61],
-        //cellsArray: [0, 1, 8, 9, 16, 17, 24, 25, 32, 33, 40, 41, 48, 49, 56, 57],
+        // cellsArray: [4, 5, 12, 13, 20, 21, 28, 29, 36, 37, 44, 45, 52, 53, 60, 61],
+        cellsArray: [0, 1, 8, 9, 16, 17, 24, 25, 32, 33, 40, 41, 48, 49, 56, 57],
       },
       {
         team: generateTeam([Daemon, Undead, Vampire], 2, 4),
@@ -40,8 +48,8 @@ export default class GameController {
     if (this.gamePlay.selectedCellIdx !== null) {
       this.gamePlay.deselectCell(this.gamePlay.selectedCellIdx);
     }
-    const charEl = this.gamePlay.cells[index].querySelector('.character');
-    if (charEl && (charEl.classList.contains('bowman') || charEl.classList.contains('swordsman') || charEl.classList.contains('magician'))) {
+    const cell = new Cell(index);
+    if (cell.role === 'ally') {
       this.gamePlay.selectCell(index);
       this.gamePlay.selectedCellIdx = index;
     } else {
