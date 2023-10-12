@@ -9,7 +9,9 @@ import GamePlay from './GamePlay.js';
 import { generateTeam, playersInit } from './generators.js';
 import cursors from './cursors.js';
 import Cell from './Cell.js'
-import MyTeam from './MyTeam.js';
+import OwnTeam from './OwnTeam.js';
+import EnemyTeam from './EnemyTeam.js';
+import mergeTeams from './mergeTeams.js';
 
 export default class GameController {
   constructor(gamePlay, stateService) {
@@ -19,24 +21,19 @@ export default class GameController {
 
   init() {
     this.gamePlay.drawUi('prairie');
-    const myTeam = new MyTeam(playersInit([
+    const ownTeam = new OwnTeam(playersInit([
       {
         team: generateTeam([Bowman, Swordsman, Magician], 2, 4),
         cellsArray: [0, 1, 8, 9, 16, 17, 24, 25, 32, 33, 40, 41, 48, 49, 56, 57],
       }
     ]));
-    console.log(myTeam.getPositionedCharacters());
-    this.gamePlay.redrawPositions(playersInit([
-      {
-        team: generateTeam([Bowman, Swordsman, Magician], 2, 4),
-        // cellsArray: [4, 5, 12, 13, 20, 21, 28, 29, 36, 37, 44, 45, 52, 53, 60, 61],
-        cellsArray: [0, 1, 8, 9, 16, 17, 24, 25, 32, 33, 40, 41, 48, 49, 56, 57],
-      },
-      {
-        team: generateTeam([Daemon, Undead, Vampire], 2, 4),
-        cellsArray: [6, 7, 14, 15, 22, 23, 30, 31, 38, 39, 46, 47, 54, 55, 62, 63],
-      },
+    const enemyTeam = new EnemyTeam(playersInit([{
+      team: generateTeam([Daemon, Undead, Vampire], 2, 4),
+      cellsArray: [6, 7, 14, 15, 22, 23, 30, 31, 38, 39, 46, 47, 54, 55, 62, 63],
+    }
     ]));
+    this.gamePlay.redrawPositions(mergeTeams(ownTeam.getPositionedCharacters(), enemyTeam.getPositionedCharacters()));
+    console.log(ownTeam.getPositionedCharacters(), enemyTeam.getPositionedCharacters());
     this.gamePlay.addCellEnterListener((index) => this.onCellEnter(index));
     this.gamePlay.addCellLeaveListener((index) => this.onCellLeave(index));
     this.gamePlay.addCellClickListener((index) => this.onCellClick(index));
@@ -52,6 +49,7 @@ export default class GameController {
     if (cell.role === 'ally') {
       this.gamePlay.selectCell(index);
       this.gamePlay.selectedCellIdx = index;
+      ownTeam.setSelectedTeamMember(index);
     } else {
       GamePlay.showError('Здесь нет твоего персонажа');
     }
@@ -69,7 +67,7 @@ export default class GameController {
       if (cell.role === 'ally' && !cell.isSelected) {
         this.gamePlay.setCursor(cursors.pointer);
         // если чужой и персонаж выбран
-      } else if (this.gamePlay.selectedCellIdx !== null && cell.role === 'enemy') { 
+      } else if (this.gamePlay.selectedCellIdx !== null && cell.role === 'enemy') {
         // если в зоне атаки выбранного персонажа
         if (this.getIndexesMoveAndAttack().arrayAttackIndexes.includes(index)) {
           this.gamePlay.setCursor(cursors.crosshair);
@@ -111,48 +109,6 @@ export default class GameController {
   showInformation(charEl) {
     return `\u{1F396}${charEl.dataset.level} \u{2694}${charEl.dataset.attack} \u{1F6E1}${charEl.dataset.defence} \u{2764}${charEl.dataset.health}`;
   }
-
-
-
-  // getCellInfo(index) {
-  //   const cellInfo = {
-  //     isEmpty: true,
-  //     character: null,
-  //     charEl: null,
-  //     role: null,
-  //     isSelected: false,
-  //   };
-  //   const cellEl = this.gamePlay.cells[index];
-  //   const charEl = cellEl.querySelector('.character');
-  //   if (charEl) {
-  //     cellInfo.isEmpty = false;
-  //     cellInfo.charEl = charEl;
-  //     if (charEl.classList.contains('swordsman')) {
-  //       cellInfo.character = 'swordsman';
-  //     } else if (charEl.classList.contains('bowman')) {
-  //       cellInfo.character = 'bowman';
-  //     } else if (charEl.classList.contains('magician')) {
-  //       cellInfo.character = 'magician';
-  //     } else if (charEl.classList.contains('vampire')) {
-  //       cellInfo.character = 'vampire';
-  //     } else if (charEl.classList.contains('undead')) {
-  //       cellInfo.character = 'undead';
-  //     } else if (charEl.classList.contains('daemon')) {
-  //       cellInfo.character = 'daemon';
-  //     }
-  //     cellInfo.role = cellInfo.character === 'swordsman' || cellInfo.character === 'bowman' || cellInfo.character === 'magician' ? 'ally' : 'enemy';
-  //     if (cellEl.classList.contains('selected')) {
-  //       cellInfo.isSelected = true;
-  //     }
-  //   }
-  //   return cellInfo;
-  // }
-
-
-
-
-
-
 
 
   getIndexesMoveAndAttack() {

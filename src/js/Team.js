@@ -14,5 +14,8 @@
 export default class Team {
   constructor(characters) {
     this.characters = characters;
+    for (let i = 0; i < characters.length; i += 1) {
+      this.characters[i].id = i + 1;
+    }
   }
 }
