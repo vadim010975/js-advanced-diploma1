@@ -1,8 +1,7 @@
-import gamePlay from "./app.js";
+
 
 export default class Cell {
-  constructor(index) {
-    const cellEl = gamePlay.cells[index];
+  constructor(cellEl) {
     const charEl = cellEl.querySelector('.character');
     if (charEl) {
       this.isEmpty = false;

@@ -12,6 +12,7 @@ import Cell from './Cell.js'
 import OwnTeam from './OwnTeam.js';
 import EnemyTeam from './EnemyTeam.js';
 import mergeTeams from './mergeTeams.js';
+import GameState from './GameState.js';
 
 export default class GameController {
   constructor(gamePlay, stateService) {
@@ -21,43 +22,54 @@ export default class GameController {
 
   init() {
     this.gamePlay.drawUi('prairie');
-    const ownTeam = new OwnTeam(playersInit([
+    this.ownTeam = new OwnTeam(playersInit([
       {
         team: generateTeam([Bowman, Swordsman, Magician], 2, 4),
         cellsArray: [0, 1, 8, 9, 16, 17, 24, 25, 32, 33, 40, 41, 48, 49, 56, 57],
       }
     ]));
-    const enemyTeam = new EnemyTeam(playersInit([{
+    this.enemyTeam = new EnemyTeam(playersInit([{
       team: generateTeam([Daemon, Undead, Vampire], 2, 4),
       cellsArray: [6, 7, 14, 15, 22, 23, 30, 31, 38, 39, 46, 47, 54, 55, 62, 63],
     }
     ]));
-    this.gamePlay.redrawPositions(mergeTeams(ownTeam.getPositionedCharacters(), enemyTeam.getPositionedCharacters()));
-    console.log(ownTeam.getPositionedCharacters(), enemyTeam.getPositionedCharacters());
+    this.gamePlay.redrawPositions(mergeTeams(this.ownTeam.getPositionedCharacters(), this.enemyTeam.getPositionedCharacters()));
     this.gamePlay.addCellEnterListener((index) => this.onCellEnter(index));
     this.gamePlay.addCellLeaveListener((index) => this.onCellLeave(index));
     this.gamePlay.addCellClickListener((index) => this.onCellClick(index));
+    GameState.activePlayer = 0;
+    this.play();
     // TODO: add event listeners to gamePlay events
     // TODO: load saved stated from stateService
+  }
+
+  play() {
+    console.log(GameState.activePlayer);
+    if (GameState.activePlayer === 1) {
+      this.moveEnemy();
+    }
   }
 
   onCellClick(index) {
     if (this.gamePlay.selectedCellIdx !== null) {
       this.gamePlay.deselectCell(this.gamePlay.selectedCellIdx);
     }
-    const cell = new Cell(index);
+    const cell = new Cell(this.gamePlay.cells[index]);
     if (cell.role === 'ally') {
       this.gamePlay.selectCell(index);
       this.gamePlay.selectedCellIdx = index;
-      ownTeam.setSelectedTeamMember(index);
+      this.ownTeam.setSelectedTeamMember(this.gamePlay.cells[index], index);
+    } else if (cell.isEmpty && this.gamePlay.cells[index].classList.contains('selected-green')) {
+      this.move(index);
+    } else if (cell.role === 'enemy' && this.gamePlay.cells[index].classList.contains('selected-red')) {
+      this.attack(index);
     } else {
       GamePlay.showError('Здесь нет твоего персонажа');
     }
   }
 
   onCellEnter(index) {
-    const cell = new Cell(index);
-    console.log(cell);
+    const cell = new Cell(this.gamePlay.cells[index]);
     // если клетка не пустая
     if (!cell.isEmpty) {
       // вывод информации title
@@ -110,6 +122,49 @@ export default class GameController {
     return `\u{1F396}${charEl.dataset.level} \u{2694}${charEl.dataset.attack} \u{1F6E1}${charEl.dataset.defence} \u{2764}${charEl.dataset.health}`;
   }
 
+  move(index) {
+    const generator = this.ownTeam.move(index, this.gamePlay.boardSize);
+    let newArrayPositionOwnTeam;
+    const drawСall = () => {
+      setTimeout(() => {
+        newArrayPositionOwnTeam = generator.next();
+        if (!newArrayPositionOwnTeam.done) {
+          this.gamePlay.redrawPositions(mergeTeams(newArrayPositionOwnTeam.value, this.enemyTeam.getPositionedCharacters()));
+          drawСall();
+        } else {
+          this.gamePlay.deselectCell(index);
+        }
+      }, 50);
+    }
+    drawСall();
+    GameState.activePlayer = 1;
+    this.play();
+  }
+
+  attack(index) {
+    const attack = this.ownTeam.selected.teamMember.character.attack;
+    this.gamePlay.showDamage(index, attack).then(() => {
+      this.enemyTeam.setDamage(this.gamePlay.cells[index].querySelector('.character').dataset.id, attack);
+      this.gamePlay.redrawPositions(mergeTeams(this.ownTeam.getPositionedCharacters(), this.enemyTeam.getPositionedCharacters()));
+    });
+    GameState.activePlayer = 1;
+    this.play();
+  }
+
+
+  moveEnemy() {
+    const targetId = this.ownTeam.getTarget();
+    console.log(targetId);
+    const targetEl = this.gamePlay.boardEl.querySelector(`[data-id=\"${targetId}\"]`);
+    console.log(targetEl);
+    const targetIdx = this.gamePlay.cells.indexOf(targetEl.closest('.cell'));
+    console.log(targetIdx);
+
+    GameState.activePlayer = 0;
+    this.play();
+  }
+
+
 
   getIndexesMoveAndAttack() {
     if (this.gamePlay.selectedCellIdx === null) {
@@ -127,7 +182,7 @@ export default class GameController {
         }
       }
     }
-    const cell = new Cell(this.gamePlay.selectedCellIdx)
+    const cell = new Cell(this.gamePlay.cells[this.gamePlay.selectedCellIdx]);
     const countStep = cell.charHikeRange;
     const arrayMoveIndexes = [];
     for (let i = 1; i <= countStep; i += 1) {
