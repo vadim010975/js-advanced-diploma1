@@ -14,7 +14,13 @@ import PositionedCharacter from './PositionedCharacter.js';
  */
 export function* characterGenerator(types, maxLevel) {
   while (true) {
-    yield new types[Math.floor(Math.random() * types.length)](Math.ceil(Math.random() * maxLevel));
+    const character = new types[Math.floor(Math.random() * types.length)](Math.ceil(Math.random() * maxLevel));
+    if (character.level > 1) {
+      for (let i = 0; i < character.level - 1; i += 1) {
+        character.levelUp();
+      }
+    }
+    yield character;
   }
 }
 

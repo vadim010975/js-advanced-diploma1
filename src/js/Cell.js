@@ -18,12 +18,12 @@ export default class Cell {
         this.character = 'magician';
         this.charHikeRange = 1;
         this.charAttackRange = 4;
-      } else if (charEl.classList.contains('vampire')) {
-        this.character = 'vampire';
-        this.charHikeRange = 4;
-        this.charAttackRange = 1;
       } else if (charEl.classList.contains('undead')) {
         this.character = 'undead';
+        this.charHikeRange = 4;
+        this.charAttackRange = 1;
+      } else if (charEl.classList.contains('vampire')) {
+        this.character = 'vampire';
         this.charHikeRange = 2;
         this.charAttackRange = 2;
       } else if (charEl.classList.contains('daemon')) {

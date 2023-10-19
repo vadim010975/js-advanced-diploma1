@@ -1,11 +1,9 @@
-
+import Indexes from './Indexes.js';
 
 export default class OwnTeam {
   constructor(arrayPositionedCharacters) {
-    this.count = arrayPositionedCharacters.length;
     this.selected = {};
     Object.defineProperties(this, {
-      count: { enumerable: false },
       selected: { enumerable: false },
   });
     for (let i = 0; i < arrayPositionedCharacters.length; i += 1) {
@@ -42,27 +40,24 @@ export default class OwnTeam {
         return [item.character.health, item.character.id];
       }
       return acc;
-    }, [100, {}])[1];
+    }, [101, {}])[1];
+  }
+
+  setDamage(charId, attack) {
+    const damage = Math.max(attack - this[`teamMember${charId}`].character.defence, attack * 0.1);
+    this[`teamMember${charId}`].character.health -= damage;
+    if (this[`teamMember${charId}`].character.health <= 0) {
+      delete this[`teamMember${charId}`];
+    }
   }
 
 
   *move(index, boardSize) {
-    const arrayIndexes = [];
-    let selectedCharI, selectedCharJ;
-    let newPlaceI, newPlaceJ;
-    for (let i = 0; i < boardSize; i += 1) {
-      arrayIndexes[i] = [];
-      for (let j = 0; j < boardSize; j += 1) {
-        arrayIndexes[i][j] = j + i * boardSize;
-        if (arrayIndexes[i][j] === this.selected.index) {
-          selectedCharI = i;
-          selectedCharJ = j;
-        }
-        if (arrayIndexes[i][j] === index) {
-          newPlaceI = i;
-          newPlaceJ = j;
-        }
-      }
+    const indexes = new Indexes(boardSize);
+    const arrayIndexes = indexes.arrayIndexes;
+    let [selectedCharI, selectedCharJ] = indexes.getIndexes(this.selected.index);
+    const [newPlaceI, newPlaceJ] = indexes.getIndexes(index);
+    //for (let i = 0; i < boardSize; i += 1) {
       const horizontalIncrease = newPlaceJ - selectedCharJ;
       const verticalIncrease = newPlaceI - selectedCharI;
       const countStep = Math.max(Math.abs(horizontalIncrease), Math.abs(verticalIncrease));
@@ -70,6 +65,6 @@ export default class OwnTeam {
         this.selected.teamMember.position = arrayIndexes[selectedCharI += verticalIncrease / countStep][selectedCharJ += horizontalIncrease / countStep];
         yield this.getPositionedCharacters();
       }
-    }
+    //}
   }
 }

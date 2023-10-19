@@ -13,6 +13,7 @@ import OwnTeam from './OwnTeam.js';
 import EnemyTeam from './EnemyTeam.js';
 import mergeTeams from './mergeTeams.js';
 import GameState from './GameState.js';
+import Indexes from './Indexes.js';
 
 export default class GameController {
   constructor(gamePlay, stateService) {
@@ -45,8 +46,19 @@ export default class GameController {
 
   play() {
     console.log(GameState.activePlayer);
+    if (!this.enemyTeam.getPositionedCharacters().length) {
+      console.log('мы выиграли раунд');
+      this.end();
+    }
+    if (!this.ownTeam.getPositionedCharacters().length) {
+      console.log('мы проиграли раунд');
+      this.end();
+    }
+
+
+
     if (GameState.activePlayer === 1) {
-      this.moveEnemy();
+      this.reactEnemy();
     }
   }
 
@@ -81,7 +93,7 @@ export default class GameController {
         // если чужой и персонаж выбран
       } else if (this.gamePlay.selectedCellIdx !== null && cell.role === 'enemy') {
         // если в зоне атаки выбранного персонажа
-        if (this.getIndexesMoveAndAttack().arrayAttackIndexes.includes(index)) {
+        if (this.getIndexesMoveAndAttack(this.gamePlay.selectedCellIdx).arrayAttackIndexes.includes(index)) {
           this.gamePlay.setCursor(cursors.crosshair);
           this.gamePlay.selectCell(index, 'red');
         } else {
@@ -95,7 +107,7 @@ export default class GameController {
       // если персонаж selected
       if (this.gamePlay.selectedCellIdx !== null) {
         // если в зоне похода выбранного персонажа
-        if (this.getIndexesMoveAndAttack().arrayMoveIndexes.includes(index)) {
+        if (this.getIndexesMoveAndAttack(this.gamePlay.selectedCellIdx).arrayMoveIndexes.includes(index)) {
           this.gamePlay.setCursor(cursors.pointer);
           this.gamePlay.selectCell(index, 'green');
         } else {
@@ -122,67 +134,138 @@ export default class GameController {
     return `\u{1F396}${charEl.dataset.level} \u{2694}${charEl.dataset.attack} \u{1F6E1}${charEl.dataset.defence} \u{2764}${charEl.dataset.health}`;
   }
 
-  move(index) {
-    const generator = this.ownTeam.move(index, this.gamePlay.boardSize);
-    let newArrayPositionOwnTeam;
-    const drawСall = () => {
-      setTimeout(() => {
-        newArrayPositionOwnTeam = generator.next();
-        if (!newArrayPositionOwnTeam.done) {
-          this.gamePlay.redrawPositions(mergeTeams(newArrayPositionOwnTeam.value, this.enemyTeam.getPositionedCharacters()));
-          drawСall();
-        } else {
-          this.gamePlay.deselectCell(index);
-        }
-      }, 50);
-    }
-    drawСall();
-    GameState.activePlayer = 1;
-    this.play();
-  }
-
-  attack(index) {
-    const attack = this.ownTeam.selected.teamMember.character.attack;
-    this.gamePlay.showDamage(index, attack).then(() => {
-      this.enemyTeam.setDamage(this.gamePlay.cells[index].querySelector('.character').dataset.id, attack);
-      this.gamePlay.redrawPositions(mergeTeams(this.ownTeam.getPositionedCharacters(), this.enemyTeam.getPositionedCharacters()));
-    });
-    GameState.activePlayer = 1;
-    this.play();
-  }
-
-
-  moveEnemy() {
-    const targetId = this.ownTeam.getTarget();
-    console.log(targetId);
-    const targetEl = this.gamePlay.boardEl.querySelector(`[data-id=\"${targetId}\"]`);
-    console.log(targetEl);
-    const targetIdx = this.gamePlay.cells.indexOf(targetEl.closest('.cell'));
-    console.log(targetIdx);
-
-    GameState.activePlayer = 0;
-    this.play();
-  }
-
-
-
-  getIndexesMoveAndAttack() {
-    if (this.gamePlay.selectedCellIdx === null) {
-      return;
-    }
-    const arrayIndexes = [];
-    let indexI, indexJ;
-    for (let i = 0; i < this.gamePlay.boardSize; i += 1) {
-      arrayIndexes[i] = [];
-      for (let j = 0; j < this.gamePlay.boardSize; j += 1) {
-        arrayIndexes[i][j] = j + i * this.gamePlay.boardSize;
-        if (arrayIndexes[i][j] === this.gamePlay.selectedCellIdx) {
-          indexI = i;
-          indexJ = j;
-        }
+  move(indexAfter, indexBefore) {
+    if (GameState.activePlayer === 0) {
+      const generatorPositions = this.ownTeam.move(indexAfter, this.gamePlay.boardSize);
+      let newArrayPositionOwnTeam;
+      const drawСall = () => {
+        setTimeout(() => {
+          newArrayPositionOwnTeam = generatorPositions.next();
+          if (!newArrayPositionOwnTeam.done) {
+            this.gamePlay.redrawPositions(mergeTeams(newArrayPositionOwnTeam.value, this.enemyTeam.getPositionedCharacters()));
+            drawСall();
+          } else {
+            this.gamePlay.deselectCell(indexAfter);
+            GameState.activePlayer = 1;
+            this.play();
+          }
+        }, 50);
       }
+      drawСall();
     }
-    const cell = new Cell(this.gamePlay.cells[this.gamePlay.selectedCellIdx]);
+    if (GameState.activePlayer === 1) {
+      const generatorPositions = this.move1(indexAfter, indexBefore);
+      let newArrayPositionTeam;
+      const drawСall = () => {
+        setTimeout(() => {
+          newArrayPositionTeam = generatorPositions.next();
+          if (!newArrayPositionTeam.done) {
+            this.gamePlay.redrawPositions(mergeTeams(this.ownTeam.getPositionedCharacters(), newArrayPositionTeam.value));
+            drawСall();
+          } else {
+            this.gamePlay.deselectCell(indexAfter);
+            GameState.activePlayer = 0;
+            this.play();
+          }
+        }, 50);
+      }
+      drawСall();
+    }
+  }
+
+  attack(index, attack = this.ownTeam.selected.teamMember.character.attack) {
+    if (GameState.activePlayer === 0) {
+      this.gamePlay.showDamage(index, attack).then(() => {
+        console.log('own attack: ', attack, ' target: ', this.gamePlay.cells[index].querySelector('.character'));
+        this.enemyTeam.setDamage(this.gamePlay.cells[index].querySelector('.character').dataset.id, attack);
+        this.gamePlay.redrawPositions(mergeTeams(this.ownTeam.getPositionedCharacters(), this.enemyTeam.getPositionedCharacters()));
+        GameState.activePlayer = 1;
+        this.play();
+      });
+    }
+    if (GameState.activePlayer === 1) {
+      this.gamePlay.showDamage(index, attack).then(() => {
+        console.log('enemy attack: ', attack, ' target: ', this.gamePlay.cells[index].querySelector('.character'));
+        this.ownTeam.setDamage(this.gamePlay.cells[index].querySelector('.character').dataset.id, attack);
+        this.gamePlay.redrawPositions(mergeTeams(this.ownTeam.getPositionedCharacters(), this.enemyTeam.getPositionedCharacters()));
+        GameState.activePlayer = 0;
+        this.play();
+      });
+    }
+  }
+
+
+  reactEnemy() {
+    const targetId = this.ownTeam.getTarget();
+    const targetEl = this.gamePlay.boardEl.querySelector(`[data-id=\"${targetId}\"]`);
+    const targetIdx = this.gamePlay.cells.indexOf(targetEl.closest('.cell'));
+    console.log('цель: ', targetIdx);
+    const attackerId = this.enemyTeam.getAtteckerId();
+    const attackerEl = this.gamePlay.boardEl.querySelector(`[data-id=\"${attackerId}\"]`);
+    const attackerIdx = this.gamePlay.cells.indexOf(attackerEl.closest('.cell'));
+    this.enemyTeam.setSelectedTeamMember(this.gamePlay.cells[attackerIdx], attackerIdx);
+    console.log(this.enemyTeam);
+    console.log('аттакер: ', attackerIdx);
+    if (this.getIndexesMoveAndAttack(attackerIdx).arrayAttackIndexes.includes(targetIdx)) {
+      this.attack(targetIdx, attackerEl.attack);
+    } else {
+      this.move(targetIdx, attackerIdx);
+      GameState.activePlayer = 0;
+      this.play();
+    }
+  }
+
+  *move1(targetIndex, attackerIndex) {
+    const indexes = new Indexes(this.gamePlay.boardSize);
+    const arrayIndexes = indexes.arrayIndexes;
+    const [targetI, targetJ] = indexes.getIndexes(targetIndex);
+    let [attackerI, attackerJ] = indexes.getIndexes(attackerIndex);
+
+    console.log('target: ', targetI, targetJ);
+    console.log('attacker: ', attackerI, attackerJ);
+    const horizontalDirection = Math.sign(targetJ - attackerJ);
+    const verticalDirection = Math.sign(targetI - attackerI);
+    console.log('horizontalDirection: ', horizontalDirection);
+    console.log('verticalDirection: ', verticalDirection);
+    const maxStepAttackers = new Cell(this.gamePlay.cells[attackerIndex]).charHikeRange;
+    console.log('maxstep: ', maxStepAttackers);
+    //const newPlaceIndex = arrayIndexes[attackerI + maxStepAttackers * verticalDirection][attackerJ + maxStepAttackers * horizontalDirection];
+    //const newPlaceI = attackerI + maxStepAttackers * verticalDirection;
+    //const newPlaceJ = attackerJ + maxStepAttackers * horizontalDirection;
+
+    // const newPlaceCell = new Cell(newPlaceIndex);
+    // if (!newPlaceCell.isEmpty) {
+    //   if (maxStepAttackers === 1) {
+
+    //   }
+    // }
+    
+
+    const horizontalIncrease = maxStepAttackers * horizontalDirection;
+    const verticalIncrease = maxStepAttackers * verticalDirection;
+    const countStep = Math.max(Math.abs(horizontalIncrease), Math.abs(verticalIncrease));
+    for (let i = 0; i < countStep; i += 1) {
+      const attackerNewI = attackerI + verticalIncrease / countStep;
+      const attackerNewJ = attackerJ + horizontalIncrease / countStep;
+      if (attackerNewI >= 0 && attackerNewI < this.gamePlay.boardSize && attackerNewJ >= 0 && attackerNewJ < this.gamePlay.boardSize) {
+        attackerI = attackerNewI;
+        attackerJ = attackerNewJ;
+      }
+      this.enemyTeam.selected.teamMember.position = arrayIndexes[attackerI][attackerJ];
+      console.log(arrayIndexes[attackerI][attackerJ]);
+      console.log(this.enemyTeam);
+      yield this.enemyTeam.getPositionedCharacters();
+      //console.log(this.getPositionedCharacters());
+    }
+  }
+
+
+
+  getIndexesMoveAndAttack(index) {
+    const indexes = new Indexes(this.gamePlay.boardSize);
+    const arrayIndexes = indexes.arrayIndexes;
+    const [indexI, indexJ] = indexes.getIndexes(index);
+    const cell = new Cell(this.gamePlay.cells[index]);
     const countStep = cell.charHikeRange;
     const arrayMoveIndexes = [];
     for (let i = 1; i <= countStep; i += 1) {
@@ -212,4 +295,10 @@ export default class GameController {
     }
     return { arrayMoveIndexes: arrayMoveIndexes.filter(el => el !== undefined), arrayAttackIndexes: arrayAttackIndexes };
   }
+
+  end() {
+    stop;
+  }
 }
+
+

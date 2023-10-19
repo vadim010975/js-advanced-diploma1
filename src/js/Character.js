@@ -23,4 +23,10 @@ export default class Character {
     this.health = 50;
     this.type = type;
   }
+
+  levelUp() {
+    this.attack = Math.round(Math.max(this.attack, this.attack * (80 + this.health) / 100));
+    this.defence = Math.round(Math.max(this.defence, this.defence * (80 + this.health) / 100));
+    this.health = Math.round(Math.min(this.health + 80, 100));
+  }
 }
