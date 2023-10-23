@@ -14,9 +14,10 @@ import PositionedCharacter from './PositionedCharacter.js';
  */
 export function* characterGenerator(types, maxLevel) {
   while (true) {
-    const character = new types[Math.floor(Math.random() * types.length)](Math.ceil(Math.random() * maxLevel));
-    if (character.level > 1) {
-      for (let i = 0; i < character.level - 1; i += 1) {
+    const character = new types[Math.floor(Math.random() * types.length)](1);
+    const charLevel = Math.ceil(Math.random() * maxLevel);
+    if (charLevel > 1) {
+      for (let i = 1; i < charLevel; i += 1) {
         character.levelUp();
       }
     }
@@ -40,14 +41,12 @@ export function generateTeam(allowedTypes, maxLevel, characterCount) {
   return new Team(characters);
 }
 
-export function playersInit(array) {
+export function playersInit(team, arrayPositions) {
   const positionedCharacterArray = [];
-  array.forEach(item => {
-    item.team.characters.forEach(el => {
-      const randomIdx = Math.floor(item.cellsArray.length * Math.random());
-      positionedCharacterArray.push(new PositionedCharacter(el, item.cellsArray[randomIdx]));
-      item.cellsArray.splice(randomIdx, 1);
+    team.characters.forEach(el => {
+      const randomIdx = Math.floor(arrayPositions.length * Math.random());
+      positionedCharacterArray.push(new PositionedCharacter(el, arrayPositions[randomIdx]));
+      arrayPositions.splice(randomIdx, 1);
     });
-  });
   return positionedCharacterArray;
 }

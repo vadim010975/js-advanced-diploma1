@@ -12,7 +12,6 @@ export default class GamePlay {
     this.newGameListeners = [];
     this.saveGameListeners = [];
     this.loadGameListeners = [];
-    this.selectedCellIdx = null;
   }
 
   bindToDOM(container) {

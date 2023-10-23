@@ -28,5 +28,6 @@ export default class Character {
     this.attack = Math.round(Math.max(this.attack, this.attack * (80 + this.health) / 100));
     this.defence = Math.round(Math.max(this.defence, this.defence * (80 + this.health) / 100));
     this.health = Math.round(Math.min(this.health + 80, 100));
+    this.level = this.level + 1;
   }
 }
